@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { io, Socket } from "socket.io-client";
+import Pusher from "pusher-js";
 import { Send, MessageSquare, LogIn, Users } from "lucide-react";
 
 interface Message {
@@ -13,8 +13,7 @@ interface Message {
 }
 
 export default function ChatApp() {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [pusherClient, setPusherClient] = useState<Pusher | null>(null);
   
   // State for login/setup
   const [inRoom, setInRoom] = useState(false);
@@ -26,55 +25,65 @@ export default function ChatApp() {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize socket connection on component mount
+  // Initialize Pusher connection when entering a room
   useEffect(() => {
-    // We first hit the API route to ensure the server is spun up
-    fetch("/api/socket").finally(() => {
-      const newSocket = io({
-        path: "/api/socket",
+    if (inRoom && roomId) {
+      // Create Pusher instance
+      // We use the environment variables from the browser (NEXT_PUBLIC_)
+      const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+      const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+      if (!pusherKey || !pusherCluster) {
+        console.error("Missing Pusher environment variables. Check .env.local");
+        return;
+      }
+
+      const pusher = new Pusher(pusherKey, {
+        cluster: pusherCluster,
       });
 
-      newSocket.on("connect", () => {
-        setIsConnected(true);
-      });
+      setPusherClient(pusher);
 
-      newSocket.on("disconnect", () => {
-        setIsConnected(false);
-      });
+      // Subscribe to the room channel
+      const channel = pusher.subscribe(`room-${roomId}`);
 
-      newSocket.on("receive-message", (data: any) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substring(7),
-            username: data.username,
-            text: data.text,
-            timestamp: data.timestamp,
-            isSelf: false,
-          },
-        ]);
-      });
+      channel.bind("new-message", (data: any) => {
+        // Since we also trigger the POST request, we receive our own messages from Pusher.
+        // We can filter out our own messages if we want, or just let Pusher render them.
+        // To prevent double rendering, we only add messages sent by others, 
+        // OR we don't optimistically update our own messages. Let's not optimistically update to keep it simple, 
+        // and just let Pusher handle all incoming messages, including our own.
+        // Or better, we optimistically update locally, and ignore the Pusher broadcast if the username matches (simple approach).
+        
+        // Let's use a simple approach: if it's not from us, add it.
+        // If we want multiple tabs of the same user to sync, we should probably check an ID.
+        // For this demo, let's just render all incoming messages as "not self" if they aren't us.
+        setMessages((prev) => {
+          // Prevent duplicates if we already added it locally
+          const alreadyExists = prev.some(
+            (msg) => msg.timestamp === data.timestamp && msg.username === data.username
+          );
+          if (alreadyExists) return prev;
 
-      newSocket.on("user-joined", (data: any) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substring(7),
-            username: "System",
-            text: `${data.username} has joined the room`,
-            timestamp: Date.now(),
-            isSelf: false,
-          },
-        ]);
+          return [
+            ...prev,
+            {
+              id: Math.random().toString(36).substring(7),
+              username: data.username,
+              text: data.text,
+              timestamp: data.timestamp,
+              isSelf: data.username === username,
+            },
+          ];
+        });
       });
-
-      setSocket(newSocket);
 
       return () => {
-        newSocket.disconnect();
+        pusher.unsubscribe(`room-${roomId}`);
+        pusher.disconnect();
       };
-    });
-  }, []);
+    }
+  }, [inRoom, roomId, username]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -83,8 +92,7 @@ export default function ChatApp() {
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim() && roomId.trim() && socket) {
-      socket.emit("join-room", roomId, username);
+    if (username.trim() && roomId.trim()) {
       setInRoom(true);
       
       // Add a system message for ourselves
@@ -100,9 +108,9 @@ export default function ChatApp() {
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim() && socket) {
+    if (inputText.trim()) {
       const msgData = {
         roomId,
         username,
@@ -110,9 +118,7 @@ export default function ChatApp() {
         timestamp: Date.now(),
       };
       
-      socket.emit("send-message", msgData);
-      
-      // Add message locally
+      // Optimistically add message locally
       setMessages((prev) => [
         ...prev,
         {
@@ -125,6 +131,19 @@ export default function ChatApp() {
       ]);
       
       setInputText("");
+
+      // Send to the serverless API route to trigger Pusher
+      try {
+        await fetch('/api/message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(msgData),
+        });
+      } catch (error) {
+        console.error("Failed to send message", error);
+      }
     }
   };
 
@@ -138,7 +157,7 @@ export default function ChatApp() {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-center mb-2 tracking-tight">ChatU</h1>
-          <p className="text-gray-400 text-center mb-8 text-sm">Join a real-time room to start chatting</p>
+          <p className="text-gray-400 text-center mb-8 text-sm">Join a real-time room to start chatting (Pusher Edition)</p>
           
           <form onSubmit={handleJoinRoom} className="space-y-4">
             <div>
@@ -165,17 +184,10 @@ export default function ChatApp() {
             </div>
             <button
               type="submit"
-              disabled={!isConnected}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors mt-6"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mt-6"
             >
-              {isConnected ? (
-                <>
-                  <LogIn className="w-5 h-5" />
-                  Join Room
-                </>
-              ) : (
-                "Connecting to server..."
-              )}
+              <LogIn className="w-5 h-5" />
+              Join Room
             </button>
           </form>
         </div>
@@ -196,8 +208,8 @@ export default function ChatApp() {
             <div>
               <h2 className="font-semibold text-gray-100">Room: {roomId}</h2>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-rose-500"}`}></div>
-                <span className="text-xs text-gray-400">{isConnected ? "Connected" : "Disconnected"}</span>
+                <div className={`w-2 h-2 rounded-full ${pusherClient ? "bg-emerald-500" : "bg-rose-500"}`}></div>
+                <span className="text-xs text-gray-400">{pusherClient ? "Connected" : "Connecting..."}</span>
               </div>
             </div>
           </div>
