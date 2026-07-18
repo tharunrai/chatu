@@ -20,8 +20,8 @@ export default async function handler(
   const { roomId, username, text, timestamp } = req.body;
 
   try {
-    // Trigger the 'new-message' event on the channel specific to the roomId
-    await pusher.trigger(`room-${roomId}`, 'new-message', {
+    // Trigger the 'new-message' event on the presence channel specific to the roomId
+    await pusher.trigger(`presence-room-${roomId}`, 'new-message', {
       username,
       text,
       timestamp,
