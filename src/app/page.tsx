@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Pusher, { Channel } from "pusher-js";
-import { Send, MessageSquare, LogIn, Users, AlertCircle } from "lucide-react";
+import { Send, MessageSquare, LogIn, Users, AlertCircle, Clock, Plus, X } from "lucide-react";
 
 interface Message {
   id: string;
@@ -10,6 +10,12 @@ interface Message {
   text: string;
   timestamp: number;
   isSelf: boolean;
+}
+
+interface RecentRoom {
+  roomId: string;
+  username: string;
+  lastJoined: number;
 }
 
 export default function ChatApp() {
@@ -20,6 +26,8 @@ export default function ChatApp() {
   const [username, setUsername] = useState("");
   const [roomId, setRoomId] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [showForm, setShowForm] = useState(false);
   
   // State for chat
   const [messages, setMessages] = useState<Message[]>([]);
@@ -30,6 +38,19 @@ export default function ChatApp() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<Channel | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load recent rooms from local storage
+  useEffect(() => {
+    const saved = localStorage.getItem("chatu_recent_rooms");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setRecentRooms(parsed);
+      } catch (e) {
+        console.error("Failed to parse recent rooms", e);
+      }
+    }
+  }, []);
 
   // Initialize Pusher connection when attempting to join a room
   useEffect(() => {
@@ -64,6 +85,15 @@ export default function ChatApp() {
         const users: string[] = [];
         members.each((member: any) => users.push(member.info.username));
         setActiveUsers(users);
+
+        // Save to recent rooms on successful join
+        setRecentRooms((prev) => {
+          const newRoom = { roomId, username, lastJoined: Date.now() };
+          const filtered = prev.filter(r => r.roomId !== roomId || r.username !== username);
+          const updated = [newRoom, ...filtered].slice(0, 5); // keep top 5
+          localStorage.setItem("chatu_recent_rooms", JSON.stringify(updated));
+          return updated;
+        });
 
         setMessages((prev) => [
           ...prev,
@@ -144,7 +174,6 @@ export default function ChatApp() {
           ];
         });
         
-        // Remove user from typing state immediately if they sent a message
         setTypingUsers((prev) => {
           const newSet = new Set(prev);
           newSet.delete(data.username);
@@ -189,16 +218,13 @@ export default function ChatApp() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
 
-    // Only send typing events if the channel is subscribed
     if (channelRef.current && channelRef.current.subscribed) {
       channelRef.current.trigger('client-typing', { username, isTyping: true });
 
-      // Clear the previous timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // Set a new timeout to clear the typing status after 2 seconds
       typingTimeoutRef.current = setTimeout(() => {
         if (channelRef.current?.subscribed) {
           channelRef.current.trigger('client-typing', { username, isTyping: false });
@@ -217,7 +243,6 @@ export default function ChatApp() {
         timestamp: Date.now(),
       };
       
-      // Stop our own typing indicator
       if (channelRef.current && channelRef.current.subscribed) {
         channelRef.current.trigger('client-typing', { username, isTyping: false });
       }
@@ -250,7 +275,6 @@ export default function ChatApp() {
     }
   };
 
-  // Helper to format typing users nicely
   const getTypingText = () => {
     const users = Array.from(typingUsers);
     if (users.length === 0) return null;
@@ -261,8 +285,8 @@ export default function ChatApp() {
 
   if (!inRoom) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-gray-100 font-sans">
-        <div className="w-full max-w-md p-8 bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl">
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-gray-100 font-sans relative">
+        <div className="w-full max-w-md p-8 bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl z-10">
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center">
               <MessageSquare className="w-8 h-8 text-indigo-400" />
@@ -278,38 +302,125 @@ export default function ChatApp() {
             </div>
           )}
 
-          <form onSubmit={handleJoinRoom} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your name"
-                className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
-                required
-              />
+          {recentRooms.length > 0 ? (
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                Recent Rooms
+              </h3>
+              <div className="space-y-2 mb-6">
+                {recentRooms.map((room, idx) => (
+                  <div 
+                    key={idx}
+                    onClick={() => {
+                      setUsername(room.username);
+                      setRoomId(room.roomId);
+                      setLoginError("");
+                      setInRoom(true);
+                    }}
+                    className="flex items-center justify-between p-3 bg-gray-950/50 hover:bg-gray-800 border border-gray-800 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-200">{room.roomId}</p>
+                      <p className="text-xs text-gray-500">as {room.username}</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+                      <LogIn className="w-4 h-4 text-indigo-400" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium rounded-xl transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Add Room
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">Room ID</label>
-              <input
-                type="text"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                placeholder="e.g. general, tech, gaming"
-                className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mt-6"
-            >
-              <LogIn className="w-5 h-5" />
-              Join Room
-            </button>
-          </form>
+          ) : (
+            <form onSubmit={handleJoinRoom} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Room ID</label>
+                <input
+                  type="text"
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                  placeholder="e.g. general, tech, gaming"
+                  className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mt-6"
+              >
+                <LogIn className="w-5 h-5" />
+                Join Room
+              </button>
+            </form>
+          )}
         </div>
+
+        {/* Modal for adding a new room when recent rooms exist */}
+        {showForm && recentRooms.length > 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-md p-6 bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+              <button 
+                onClick={() => setShowForm(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <h2 className="text-xl font-bold text-gray-100 mb-1">Add New Room</h2>
+              <p className="text-sm text-gray-400 mb-6">Enter a room name and your username to join.</p>
+              
+              <form onSubmit={handleJoinRoom} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1.5">Room ID</label>
+                  <input
+                    type="text"
+                    value={roomId}
+                    onChange={(e) => setRoomId(e.target.value)}
+                    placeholder="e.g. general, tech, gaming"
+                    className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mt-6"
+                >
+                  <LogIn className="w-5 h-5" />
+                  Join Room
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -404,7 +515,7 @@ export default function ChatApp() {
               </div>
             );
           })}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
