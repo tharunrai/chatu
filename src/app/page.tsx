@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Pusher, { Channel } from "pusher-js";
-import { Send, MessageSquare, LogIn, Users, AlertCircle, Clock, Plus, X } from "lucide-react";
+import { Send, MessageSquare, LogIn, Users, AlertCircle, Clock, Plus, X, Trash2 } from "lucide-react";
 
 interface Message {
   id: string;
@@ -215,6 +215,16 @@ export default function ChatApp() {
     }
   };
 
+  const handleDeleteRoom = (e: React.MouseEvent, roomToDelete: RecentRoom) => {
+    e.stopPropagation();
+    setRecentRooms((prev) => {
+      const updated = prev.filter(r => r.roomId !== roomToDelete.roomId || r.username !== roomToDelete.username);
+      localStorage.setItem("chatu_recent_rooms", JSON.stringify(updated));
+      if (updated.length === 0) setShowForm(true);
+      return updated;
+    });
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
 
@@ -285,30 +295,33 @@ export default function ChatApp() {
 
   if (!inRoom) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-gray-100 font-sans relative">
-        <div className="w-full max-w-md p-8 bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl z-10">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center">
-              <MessageSquare className="w-8 h-8 text-indigo-400" />
+      <div className="min-h-screen bg-gray-950 flex flex-col p-6 text-gray-100 font-sans relative">
+        {/* Top Branding */}
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between py-6 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
+              <MessageSquare className="w-6 h-6 text-indigo-400" />
             </div>
+            <h1 className="text-2xl font-bold tracking-tight">ChatU</h1>
           </div>
-          <h1 className="text-3xl font-bold text-center mb-2 tracking-tight">ChatU</h1>
-          <p className="text-gray-400 text-center mb-6 text-sm">Join a real-time room to start chatting</p>
-          
+        </div>
+        
+        <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col">
           {loginError && (
-            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/50 rounded-xl flex items-start gap-3">
+            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/50 rounded-xl flex items-start gap-3 w-full max-w-md mx-auto">
               <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
               <p className="text-sm text-rose-200">{loginError}</p>
             </div>
           )}
 
           {recentRooms.length > 0 ? (
-            <div className="mb-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                Recent Rooms
-              </h3>
-              <div className="space-y-2 mb-6">
+            <div className="w-full">
+              <div className="mb-6 flex items-center gap-2 text-gray-400">
+                <Clock className="w-5 h-5" />
+                <h2 className="text-lg font-medium">Recent Rooms</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {recentRooms.map((room, idx) => (
                   <div 
                     key={idx}
@@ -318,58 +331,72 @@ export default function ChatApp() {
                       setLoginError("");
                       setInRoom(true);
                     }}
-                    className="flex items-center justify-between p-3 bg-gray-950/50 hover:bg-gray-800 border border-gray-800 rounded-xl cursor-pointer transition-colors group"
+                    className="relative p-6 bg-gray-900/50 hover:bg-gray-800/80 border border-gray-800 hover:border-indigo-500/50 rounded-2xl cursor-pointer transition-all group flex flex-col items-start gap-4"
                   >
-                    <div>
-                      <p className="text-sm font-medium text-gray-200">{room.roomId}</p>
-                      <p className="text-xs text-gray-500">as {room.username}</p>
+                    <button
+                      onClick={(e) => handleDeleteRoom(e, room)}
+                      className="absolute top-4 right-4 p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Users className="w-5 h-5 text-indigo-400" />
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
-                      <LogIn className="w-4 h-4 text-indigo-400" />
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-100 mb-1 truncate">{room.roomId}</h3>
+                      <p className="text-sm text-gray-500 truncate">Joined as <span className="text-gray-300 font-medium">{room.username}</span></p>
                     </div>
                   </div>
                 ))}
+                
+                <div 
+                  onClick={() => setShowForm(true)}
+                  className="p-6 bg-gray-950 hover:bg-gray-900 border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-indigo-400 min-h-[160px]"
+                >
+                  <Plus className="w-8 h-8" />
+                  <span className="font-medium">Join New Room</span>
+                </div>
               </div>
-              <button
-                onClick={() => setShowForm(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium rounded-xl transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Add Room
-              </button>
             </div>
           ) : (
-            <form onSubmit={handleJoinRoom} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
-                  required
-                />
+            <div className="flex-1 flex flex-col items-center justify-center mt-[-10vh]">
+              <div className="w-full max-w-md p-8 bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl">
+                <h2 className="text-2xl font-bold text-center mb-2 text-gray-100">Welcome</h2>
+                <p className="text-gray-400 text-center mb-8 text-sm">Join a real-time room to start chatting</p>
+                
+                <form onSubmit={handleJoinRoom} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Enter your name"
+                      className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1.5">Room ID</label>
+                    <input
+                      type="text"
+                      value={roomId}
+                      onChange={(e) => setRoomId(e.target.value)}
+                      placeholder="e.g. general, tech, gaming"
+                      className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mt-6"
+                  >
+                    <LogIn className="w-5 h-5" />
+                    Join Room
+                  </button>
+                </form>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">Room ID</label>
-                <input
-                  type="text"
-                  value={roomId}
-                  onChange={(e) => setRoomId(e.target.value)}
-                  placeholder="e.g. general, tech, gaming"
-                  className="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-gray-100 placeholder:text-gray-600"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors mt-6"
-              >
-                <LogIn className="w-5 h-5" />
-                Join Room
-              </button>
-            </form>
+            </div>
           )}
         </div>
 
@@ -426,8 +453,8 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4 md:p-6 font-sans">
-      <div className="w-full max-w-4xl h-[85vh] flex flex-col bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl shadow-2xl overflow-hidden relative">
+    <div className="h-screen w-full bg-gray-950 flex justify-center font-sans overflow-hidden">
+      <div className="w-full max-w-6xl h-full flex flex-col bg-gray-900/40 relative sm:border-x sm:border-gray-800/50 shadow-2xl">
         
         {/* Header */}
         <header className="px-6 py-4 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between">
