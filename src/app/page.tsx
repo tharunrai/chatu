@@ -335,7 +335,7 @@ export default function ChatApp() {
                   >
                     <button
                       onClick={(e) => handleDeleteRoom(e, room)}
-                      className="absolute top-4 right-4 p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute top-4 right-4 p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
