@@ -295,9 +295,9 @@ export default function ChatApp() {
 
   if (!inRoom) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col p-6 text-gray-100 font-sans relative">
+      <div className="min-h-[100dvh] bg-gray-950 flex flex-col p-4 sm:p-6 text-gray-100 font-sans relative">
         {/* Top Branding */}
-        <div className="w-full max-w-6xl mx-auto flex items-center justify-between py-6 mb-8">
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between py-4 sm:py-6 mb-4 sm:mb-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
               <MessageSquare className="w-6 h-6 text-indigo-400" />
@@ -453,11 +453,11 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="h-screen w-full bg-gray-950 flex justify-center font-sans overflow-hidden">
+    <div className="h-[100dvh] w-full bg-gray-950 flex justify-center font-sans overflow-hidden">
       <div className="w-full max-w-6xl h-full flex flex-col bg-gray-900/40 relative sm:border-x sm:border-gray-800/50 shadow-2xl">
         
         {/* Header */}
-        <header className="px-6 py-4 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between">
+        <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center relative group cursor-pointer hover:bg-indigo-500/30 transition-colors">
               <Users className="w-5 h-5 text-indigo-400" />
@@ -510,7 +510,7 @@ export default function ChatApp() {
         </header>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {messages.map((msg) => {
             if (msg.username === "System") {
               return (
@@ -524,7 +524,7 @@ export default function ChatApp() {
 
             return (
               <div key={msg.id} className={`flex ${msg.isSelf ? "justify-end" : "justify-start"}`}>
-                <div className={`flex flex-col max-w-[75%] md:max-w-[60%] ${msg.isSelf ? "items-end" : "items-start"}`}>
+                <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[60%] ${msg.isSelf ? "items-end" : "items-start"}`}>
                   <span className="text-xs text-gray-500 mb-1 ml-1">{msg.username}</span>
                   <div 
                     className={`px-4 py-3 rounded-2xl ${
