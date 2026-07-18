@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: "A fast, real-time chat application.",
   icons: {
     icon: '/logo.png',
+    apple: '/logo.png',
   },
   openGraph: {
     title: "ChatU - Real-time Chat",
