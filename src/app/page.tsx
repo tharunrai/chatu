@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { MessageSquare, AlertCircle } from "lucide-react";
+import Image from "next/image";
+import { AlertCircle } from "lucide-react";
 import RecentRooms from "@/components/chat/RecentRooms";
 import JoinRoomForm from "@/components/chat/JoinRoomForm";
 import JoinRoomModal from "@/components/chat/JoinRoomModal";
@@ -62,9 +63,13 @@ export default function ChatApp() {
         {/* Top Branding */}
         <div className="w-full max-w-6xl mx-auto flex items-center justify-between py-4 sm:py-6 mb-4 sm:mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20">
-              <MessageSquare className="w-6 h-6 text-indigo-400" />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="ChatU Logo"
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-xl object-contain bg-en-50 border border-indigo-500/20 p-1"
+            />
             <h1 className="text-2xl font-bold tracking-tight">ChatU</h1>
           </div>
         </div>

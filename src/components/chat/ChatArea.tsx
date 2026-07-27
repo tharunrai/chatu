@@ -35,10 +35,10 @@ export default function ChatArea({
         return (
           <div
             key={msg.id}
-            className={`flex items-end gap-2.5 ${msg.isSelf ? "justify-end" : "justify-start"}`}
+            className={`flex items-start gap-2.5 ${msg.isSelf ? "justify-end" : "justify-start"}`}
           >
             {!msg.isSelf && (
-              <div className="shrink-0 mb-5">
+              <div className="shrink-0 mt-5">
                 <Image
                   src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
                   alt={msg.username}
@@ -90,7 +90,7 @@ export default function ChatArea({
               </span>
             </div>
             {msg.isSelf && (
-              <div className="shrink-0 mb-5">
+              <div className="shrink-0 mt-5">
                 <Image
                   src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
                   alt={msg.username}
