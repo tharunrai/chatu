@@ -1,17 +1,23 @@
 # ChatU 💬
 
-ChatU is a modern, real-time web chat application built using **Next.js (App Router)** and **React 19**, powered by **Pusher** for instantaneous, low-latency communication. It features a sleek, dark-themed UI styled with **Tailwind CSS v4** and animated using standard micro-animations.
+ChatU is a modern, real-time web chat application built using **Next.js (App Router)** and **React 19**, powered by **Pusher** for instantaneous, low-latency communication. It features a sleek, dark-themed UI styled with **Tailwind CSS v4**, dynamic avatars powered by **DiceBear 10.x**, and clean state orchestration via custom React hooks.
 
 ---
 
 ## Features ✨
 
-* **Real-time Messaging**: Exchange messages instantly with other users in the same room.
+* **Real-time Messaging**: Exchange messages instantly with other users in presence channels using Pusher.
+* **DiceBear 10.x Avatars**: Dynamic SVG avatar generation:
+  * **Notionists** avatars seeded by usernames for profile pictures.
+  * **Shape Grid** avatars seeded by room IDs for visually distinct room identity icons.
+* **Custom React Hooks State Engine**:
+  * `useChat(roomId, username)`: Encapsulates Pusher subscriptions, event handlers, typing indicators, and message sending via an atomic `useReducer` state machine.
+  * `useRecentRooms()`: Handles `localStorage` cache synchronization for recently joined rooms.
 * **Double-Tap to Reply**: Double-click (or double-tap) any message bubble to link your response. Displays the reply context inline.
-* **Presence & Active Users**: Hover over the user icon in the header to view a live popover listing all active members in the room.
-* **Typing Indicators**: See when other participants are typing, complete with bouncy animation feedback.
-* **Recent Rooms Cache**: Automatically stores up to 5 recently joined rooms (with their respective usernames) in `localStorage` for fast reconnects.
-* **Modular Architecture**: Clean separation of state orchestration, UI presentation components, and typing declarations.
+* **Presence & Active Users**: Hover over the user count in the header to view a live popover listing active room members with their custom avatars.
+* **Typing Indicators**: Real-time typing indicators with animated bouncing dots feedback via client events.
+* **Recent Rooms Cache**: Automatically stores up to 5 recently joined rooms in `localStorage` for quick one-click reconnects.
+* **Strict TypeScript Safety**: Fully typed Pusher events (`PusherMember`, `ChatMessageEvent`, `TypingEvent`) and `crypto.randomUUID()` for reliable message IDs.
 
 ---
 
@@ -25,15 +31,18 @@ src/
 │   ├── globals.css          # Global styling definitions
 │   ├── layout.tsx           # Page structure wrapper
 │   ├── manifest.ts          # Web app manifest for PWA capabilities
-│   └── page.tsx             # Main page orchestrating Pusher bindings & states
+│   └── page.tsx             # Main page composing custom hooks and UI components
 ├── components/
 │   └── chat/
-│       ├── ChatArea.tsx     # Message lists and scroll behavior
-│       ├── ChatHeader.tsx   # Title, typing indicator, and active users popover
-│       ├── ChatInput.tsx    # Text editor and typing triggers
-│       ├── RecentRooms.tsx  # Landing page cached rooms list
+│       ├── ChatArea.tsx     # Message lists, avatars, and double-click reply behavior
+│       ├── ChatHeader.tsx   # Room title, shape-grid avatar, typing indicator, and user popover
+│       ├── ChatInput.tsx    # Text editor, reply preview, and typing event triggers
+│       ├── RecentRooms.tsx  # Landing page cached rooms list with shape-grid & notionist avatars
 │       ├── JoinRoomForm.tsx # Login panel
 │       └── JoinRoomModal.tsx# Form overlay modal
+├── hooks/
+│   ├── useChat.ts           # Custom hook orchestrating Pusher subscriptions & chatReducer
+│   └── useRecentRooms.ts    # Custom hook handling localStorage persistence for recent rooms
 ├── pages/
 │   └── api/
 │       ├── message.ts       # Broadcasts text messages via Pusher
@@ -47,9 +56,11 @@ src/
 
 ## Tech Stack 🛠️
 
-* **Framework**: Next.js 16.2
+* **Framework**: Next.js 16.2 (App Router)
 * **Library**: React 19
-* **Real-time Sync**: Pusher & Pusher-js (via Presence Channels & Client Events)
+* **Real-Time Sync**: Pusher & Pusher-JS (Presence Channels & Client Events)
+* **Avatars**: DiceBear 10.x API (`notionists` & `shape-grid`)
+* **State Management**: React `useReducer` & Custom Hooks (`useChat`, `useRecentRooms`)
 * **Styling**: Tailwind CSS v4
 * **Icons**: Lucide React
 
@@ -92,7 +103,7 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in your web browser to start chatting.
 
 ### 5. Build for Production
-Verify typescript constraints and build optimizer bundles:
+Verify TypeScript constraints and build optimized bundles:
 ```bash
 npm run build
 ```
