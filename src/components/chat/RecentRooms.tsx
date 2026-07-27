@@ -38,7 +38,7 @@ export default function RecentRooms({
             </button>
             <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/80 shrink-0 group-hover:scale-110 transition-transform">
               <Image
-                src={`https://api.dicebear.com/9.x/shape-grid/svg?seed=${encodeURIComponent(
+                src={`https://api.dicebear.com/10.x/shape-grid/svg?seed=${encodeURIComponent(
                   room.roomId
                 )}`}
                 alt={room.roomId}
@@ -54,7 +54,7 @@ export default function RecentRooms({
                 <span>Joined as</span>
                 <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-700 border border-gray-600 inline-block align-middle shrink-0">
                   <Image
-                    src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(
+                    src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(
                       room.username
                     )}`}
                     alt={room.username}

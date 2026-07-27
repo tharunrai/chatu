@@ -33,7 +33,7 @@ export default function ChatHeader({
         {/* Room Shapes Avatar */}
         <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/80 shrink-0">
           <Image
-            src={`https://api.dicebear.com/9.x/shape-grid/svg?seed=${encodeURIComponent(roomId)}`}
+            src={`https://api.dicebear.com/10.x/shape-grid/svg?seed=${encodeURIComponent(roomId)}`}
             alt={roomId}
             width={40}
             height={40}
@@ -83,7 +83,7 @@ export default function ChatHeader({
                 <li key={u} className="text-sm text-gray-200 flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0 border border-gray-600">
                     <Image
-                      src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(
+                      src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(
                         u
                       )}`}
                       alt={u}
@@ -106,7 +106,7 @@ export default function ChatHeader({
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-800/60 rounded-xl border border-gray-700/50">
           <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0">
             <Image
-              src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(
+              src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(
                 username
               )}`}
               alt={username}

@@ -40,7 +40,7 @@ export default function ChatArea({
             {!msg.isSelf && (
               <div className="shrink-0 mb-5">
                 <Image
-                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
+                  src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
                   alt={msg.username}
                   width={40}
                   height={40}
@@ -92,7 +92,7 @@ export default function ChatArea({
             {msg.isSelf && (
               <div className="shrink-0 mb-5">
                 <Image
-                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
+                  src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
                   alt={msg.username}
                   width={40}
                   height={40}
