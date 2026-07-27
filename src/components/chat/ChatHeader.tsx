@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { Users } from "lucide-react";
 
 interface ChatHeaderProps {
@@ -29,25 +30,22 @@ export default function ChatHeader({
   return (
     <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/80 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center relative group cursor-pointer hover:bg-indigo-500/30 transition-colors">
-          <Users className="w-5 h-5 text-indigo-400" />
-          <div className="absolute top-full left-0 mt-2 w-48 p-3 bg-gray-800 border border-gray-700 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Active Users ({activeUsers.length})
-            </h3>
-            <ul className="space-y-1">
-              {activeUsers.map((u) => (
-                <li key={u} className="text-sm text-gray-200 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  <span className="truncate max-w-[120px] inline-block">{u}</span>
-                  {u === username && <span className="text-gray-500 text-xs shrink-0">(You)</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Room Shapes Avatar */}
+        <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/80 shrink-0">
+          <Image
+            src={`https://api.dicebear.com/9.x/shape-grid/svg?seed=${encodeURIComponent(roomId)}`}
+            alt={roomId}
+            width={40}
+            height={40}
+            unoptimized
+            className="w-full h-full object-cover"
+          />
         </div>
+
         <div className="flex flex-col">
-          <h2 className="font-semibold text-gray-100">Room: {roomId}</h2>
+          <h2 className="font-semibold text-gray-100 flex items-center gap-2">
+            <span>Room: {roomId}</span>
+          </h2>
           {typingUsers.size > 0 ? (
             <div className="flex items-center gap-1.5">
               <div className="flex gap-0.5 mt-1">
@@ -67,12 +65,67 @@ export default function ChatHeader({
           )}
         </div>
       </div>
-      <button
-        onClick={onLeave}
-        className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-      >
-        Leave
-      </button>
+
+      <div className="flex items-center gap-3">
+        {/* Active Users Dropdown */}
+        <div className="relative group cursor-pointer">
+          <div className="px-3 py-1.5 bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 rounded-xl flex items-center gap-2 transition-colors">
+            <Users className="w-4 h-4 text-indigo-400" />
+            <span className="text-xs font-medium text-gray-300">{activeUsers.length}</span>
+          </div>
+
+          <div className="absolute top-full right-0 mt-2 w-56 p-3 bg-gray-800 border border-gray-700 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Active Users ({activeUsers.length})
+            </h3>
+            <ul className="space-y-2 max-h-48 overflow-y-auto">
+              {activeUsers.map((u) => (
+                <li key={u} className="text-sm text-gray-200 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0 border border-gray-600">
+                    <Image
+                      src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(
+                        u
+                      )}`}
+                      alt={u}
+                      width={24}
+                      height={24}
+                      unoptimized
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="truncate max-w-[120px] inline-block">{u}</span>
+                  {u === username && <span className="text-gray-500 text-xs shrink-0">(You)</span>}
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-auto shrink-0"></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Current User Badge */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-800/60 rounded-xl border border-gray-700/50">
+          <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0">
+            <Image
+              src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(
+                username
+              )}`}
+              alt={username}
+              width={24}
+              height={24}
+              unoptimized
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <span className="text-xs font-medium text-gray-200 max-w-[100px] truncate">{username}</span>
+        </div>
+
+        <button
+          onClick={onLeave}
+          className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          Leave
+        </button>
+      </div>
     </header>
   );
 }

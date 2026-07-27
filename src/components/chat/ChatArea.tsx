@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import Image from "next/image";
 import { Message } from "@/types/chat";
 
 interface ChatAreaProps {
@@ -32,7 +33,22 @@ export default function ChatArea({
         }
 
         return (
-          <div key={msg.id} className={`flex ${msg.isSelf ? "justify-end" : "justify-start"}`}>
+          <div
+            key={msg.id}
+            className={`flex items-end gap-2.5 ${msg.isSelf ? "justify-end" : "justify-start"}`}
+          >
+            {!msg.isSelf && (
+              <div className="shrink-0 mb-5">
+                <Image
+                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
+                  alt={msg.username}
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700/80 object-cover"
+                />
+              </div>
+            )}
             <div
               className={`flex flex-col max-w-[85%] sm:max-w-[75%] md:max-w-[60%] ${
                 msg.isSelf ? "items-end" : "items-start"
@@ -73,6 +89,18 @@ export default function ChatArea({
                 })}
               </span>
             </div>
+            {msg.isSelf && (
+              <div className="shrink-0 mb-5">
+                <Image
+                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(msg.username)}`}
+                  alt={msg.username}
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="w-10 h-10 rounded-full bg-indigo-950 border border-indigo-500/50 object-cover"
+                />
+              </div>
+            )}
           </div>
         );
       })}
