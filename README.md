@@ -1,4 +1,4 @@
-# ChatU 💬
+# ChatU 
 
 ChatU is a modern, real-time web chat application built using **Next.js (App Router)** and **React 19**, powered by **Pusher** for instantaneous, low-latency communication. It features a sleek, dark-themed UI styled with **Tailwind CSS v4**, dynamic avatars powered by **DiceBear 10.x**, and clean state orchestration via custom React hooks.
 

@@ -28,15 +28,18 @@ export default function RecentRooms({
           <div
             key={`${room.roomId}-${room.username}-${idx}`}
             onClick={() => onJoinRoom(room.username, room.roomId)}
-            className="relative p-6 bg-gray-950/50 hover:bg-gray-800/80 border border-gray-800 hover:border-indigo-500/50 rounded-2xl cursor-pointer transition-all group flex flex-col items-start gap-4"
+            className="relative p-6 bg-gray-950/50 hover:bg-gray-800/80 active:bg-gray-800/90 border border-gray-800 hover:border-indigo-500/50 rounded-2xl cursor-pointer transition-all group flex flex-col items-start gap-4 touch-manipulation"
           >
             <button
+              type="button"
               onClick={(e) => onDeleteRoom(e, room)}
-              className="absolute top-4 right-4 p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all z-10"
+              title="Remove room"
+              className="absolute top-3 right-3 p-2.5 sm:p-2 text-gray-400 hover:text-rose-400 hover:bg-rose-400/10 active:bg-rose-500/20 rounded-xl transition-all z-10 touch-manipulation"
             >
               <Trash2 className="w-4 h-4" />
             </button>
-            <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/80 shrink-0 group-hover:scale-110 transition-transform">
+
+            <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/80 shrink-0 group-hover:scale-105 transition-transform">
               <Image
                 src={`https://api.dicebear.com/10.x/shape-grid/svg?seed=${encodeURIComponent(
                   room.roomId
@@ -72,7 +75,7 @@ export default function RecentRooms({
 
         <div
           onClick={onJoinNewRoomClick}
-          className="p-6 bg-gray-950 hover:bg-gray-900 border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-indigo-400 min-h-[160px]"
+          className="p-6 bg-gray-950 hover:bg-gray-900 active:bg-gray-900/90 border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-indigo-400 min-h-[160px] touch-manipulation"
         >
           <Plus className="w-8 h-8" />
           <span className="font-medium">Join New Room</span>

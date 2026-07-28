@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
+import { CornerUpLeft } from "lucide-react";
 import { Message } from "@/types/chat";
 
 interface ChatAreaProps {
@@ -35,7 +36,7 @@ export default function ChatArea({
         return (
           <div
             key={msg.id}
-            className={`flex items-start gap-2.5 ${msg.isSelf ? "justify-end" : "justify-start"}`}
+            className={`flex items-start gap-2.5 group ${msg.isSelf ? "justify-end" : "justify-start"}`}
           >
             {!msg.isSelf && (
               <div className="shrink-0 mt-5">
@@ -54,11 +55,25 @@ export default function ChatArea({
                 msg.isSelf ? "items-end" : "items-start"
               }`}
             >
-              <span className="text-xs text-gray-500 mb-1 ml-1">{msg.username}</span>
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <span className="text-xs text-gray-500">{msg.username}</span>
+                {/* Dedicated Mobile & Desktop Reply Button */}
+                {onReplyToMessage && (
+                  <button
+                    type="button"
+                    onClick={() => onReplyToMessage(msg)}
+                    title="Reply to message"
+                    className="p-1 text-gray-500 hover:text-indigo-400 active:text-indigo-300 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity rounded-md hover:bg-gray-800/60 active:scale-95 touch-manipulation"
+                  >
+                    <CornerUpLeft className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
               <div
                 onDoubleClick={() => onReplyToMessage?.(msg)}
-                title="Double-click to reply"
-                className={`px-4 py-3 rounded-2xl cursor-pointer select-none transition-all hover:brightness-110 active:scale-[0.99] ${
+                title="Double-click or tap arrow to reply"
+                className={`px-4 py-3 rounded-2xl select-none transition-all hover:brightness-110 active:scale-[0.99] ${
                   msg.isSelf
                     ? "bg-indigo-600 text-white rounded-tr-sm"
                     : "bg-gray-800 text-gray-100 rounded-tl-sm border border-gray-700/50"

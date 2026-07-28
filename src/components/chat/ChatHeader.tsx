@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Users } from "lucide-react";
 
@@ -19,6 +19,23 @@ export default function ChatHeader({
   isConnected,
   onLeave,
 }: ChatHeaderProps) {
+  const [showUsersPopover, setShowUsersPopover] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setShowUsersPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
   const getTypingText = () => {
     const users = Array.from(typingUsers);
     if (users.length === 0) return null;
@@ -66,40 +83,50 @@ export default function ChatHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Active Users Dropdown */}
-        <div className="relative group cursor-pointer">
-          <div className="px-3 py-1.5 bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 rounded-xl flex items-center gap-2 transition-colors">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Active Users Button & Popover (Click & Touch Enabled) */}
+        <div className="relative" ref={popoverRef}>
+          <button
+            type="button"
+            onClick={() => setShowUsersPopover((prev) => !prev)}
+            aria-label="Toggle active users list"
+            className="px-3 py-1.5 bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 rounded-xl flex items-center gap-2 transition-colors active:scale-95 touch-manipulation"
+          >
             <Users className="w-4 h-4 text-indigo-400" />
             <span className="text-xs font-medium text-gray-300">{activeUsers.length}</span>
-          </div>
+          </button>
 
-          <div className="absolute top-full right-0 mt-2 w-56 p-3 bg-gray-800 border border-gray-700 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Active Users ({activeUsers.length})
-            </h3>
-            <ul className="space-y-2 max-h-48 overflow-y-auto">
-              {activeUsers.map((u) => (
-                <li key={u} className="text-sm text-gray-200 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0 border border-gray-600">
-                    <Image
-                      src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(
-                        u
-                      )}`}
-                      alt={u}
-                      width={24}
-                      height={24}
-                      unoptimized
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <span className="truncate max-w-[120px] inline-block">{u}</span>
-                  {u === username && <span className="text-gray-500 text-xs shrink-0">(You)</span>}
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-auto shrink-0"></span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {showUsersPopover && (
+            <div className="absolute top-full right-0 mt-2 w-56 p-3 bg-gray-800 border border-gray-700 rounded-xl z-30 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Active Users ({activeUsers.length})
+                </h3>
+                <span className="text-[10px] text-gray-500">Live</span>
+              </div>
+              <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {activeUsers.map((u) => (
+                  <li key={u} className="text-sm text-gray-200 flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 shrink-0 border border-gray-600">
+                      <Image
+                        src={`https://api.dicebear.com/10.x/notionists/svg?seed=${encodeURIComponent(
+                          u
+                        )}`}
+                        alt={u}
+                        width={24}
+                        height={24}
+                        unoptimized
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="truncate max-w-[120px] inline-block">{u}</span>
+                    {u === username && <span className="text-gray-500 text-xs shrink-0">(You)</span>}
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-auto shrink-0"></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Current User Badge */}
@@ -121,7 +148,7 @@ export default function ChatHeader({
 
         <button
           onClick={onLeave}
-          className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+          className="px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700 rounded-lg transition-colors active:scale-95 touch-manipulation"
         >
           Leave
         </button>
