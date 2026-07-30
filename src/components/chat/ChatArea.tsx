@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
-import { CornerUpLeft, CheckCheck } from "lucide-react";
+import { CornerUpLeft, Check, CheckCheck } from "lucide-react";
 import { Message } from "@/types/chat";
 
 interface ChatAreaProps {
@@ -104,12 +104,14 @@ export default function ChatArea({
                     minute: "2-digit",
                   })}
                 </span>
-                {msg.isSelf && msg.status && (
-                  <CheckCheck
-                    className={`w-3.5 h-3.5 ${
-                      msg.status === "read" ? "text-blue-500" : "text-white"
-                    }`}
-                  />
+                {msg.isSelf && (
+                  <span title={msg.status === "read" ? "Read" : "Sent"}>
+                    {msg.status === "read" ? (
+                      <CheckCheck className="w-3.5 h-3.5 text-sky-400" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 text-gray-400" />
+                    )}
+                  </span>
                 )}
               </div>
             </div>
