@@ -4,6 +4,7 @@ export interface Message {
   text: string;
   timestamp: number;
   isSelf: boolean;
+  status?: "sent" | "read";
   replyTo?: {
     username: string;
     text: string;

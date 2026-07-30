@@ -143,6 +143,14 @@ export function useChatRoom(options?: UseChatRoomOptions) {
         ];
       });
 
+      if (data.username !== username) {
+        // Acknowledge receipt of the message
+        channel.trigger("client-read", {
+          timestamp: data.timestamp,
+          username: data.username,
+        });
+      }
+
       setTypingUsers((prev) => {
         const newSet = new Set(prev);
         newSet.delete(data.username);
@@ -161,6 +169,17 @@ export function useChatRoom(options?: UseChatRoomOptions) {
         }
         return newSet;
       });
+    });
+
+    // Handle read receipts via Client Events
+    channel.bind("client-read", (data: { timestamp: number; username: string }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.timestamp === data.timestamp && msg.username === data.username
+            ? { ...msg, status: "read" }
+            : msg
+        )
+      );
     });
 
     return () => {
@@ -218,6 +237,7 @@ export function useChatRoom(options?: UseChatRoomOptions) {
         timestamp: msgData.timestamp,
         isSelf: true,
         replyTo: msgData.replyTo,
+        status: "sent",
       },
     ]);
 

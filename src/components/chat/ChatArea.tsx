@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
-import { CornerUpLeft } from "lucide-react";
+import { CornerUpLeft, CheckCheck } from "lucide-react";
 import { Message } from "@/types/chat";
 
 interface ChatAreaProps {
@@ -97,12 +97,21 @@ export default function ChatArea({
 
                 <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
               </div>
-              <span className="text-[10px] text-gray-600 mt-1 mr-1">
-                {new Date(msg.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              <div className="flex items-center gap-1 mt-1 mr-1">
+                <span className="text-[10px] text-gray-600">
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                {msg.isSelf && msg.status && (
+                  <CheckCheck
+                    className={`w-3.5 h-3.5 ${
+                      msg.status === "read" ? "text-blue-500" : "text-white"
+                    }`}
+                  />
+                )}
+              </div>
             </div>
             {msg.isSelf && (
               <div className="shrink-0 mt-5">
