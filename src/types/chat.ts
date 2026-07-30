@@ -4,7 +4,7 @@ export interface Message {
   text: string;
   timestamp: number;
   isSelf: boolean;
-  status?: "sent" | "read";
+  imageUrl?: string;
   replyTo?: {
     username: string;
     text: string;

@@ -17,7 +17,7 @@ export default async function handler(
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { roomId, username, text, timestamp, replyTo } = req.body;
+  const { roomId, username, text, timestamp, replyTo, imageUrl } = req.body;
 
   try {
     // Trigger the 'new-message' event on the presence channel specific to the roomId
@@ -26,6 +26,7 @@ export default async function handler(
       text,
       timestamp,
       replyTo,
+      imageUrl,
     });
     
     res.status(200).json({ success: true });

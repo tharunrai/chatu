@@ -17,6 +17,7 @@ export interface ChatMessageEvent {
   username: string;
   text: string;
   timestamp: number;
+  imageUrl?: string;
   replyTo?: {
     username: string;
     text: string;
@@ -45,7 +46,6 @@ type ChatAction =
   | { type: "MEMBER_REMOVED"; username: string; systemMessage: Message }
   | { type: "MESSAGE_RECEIVED"; message: Message; senderUsername: string }
   | { type: "MESSAGE_SENT"; message: Message }
-  | { type: "MESSAGE_READ"; timestamp: number; username: string }
   | { type: "TYPING_CHANGED"; username: string; isTyping: boolean }
   | { type: "SET_REPLY_TO"; message: Message | null }
   | { type: "LEAVE_ROOM" };
@@ -130,16 +130,6 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         messages: [...state.messages, action.message],
         replyTo: null,
-      };
-
-    case "MESSAGE_READ":
-      return {
-        ...state,
-        messages: state.messages.map((m) =>
-          m.timestamp === action.timestamp && m.username === action.username
-            ? { ...m, status: "read" }
-            : m
-        ),
       };
 
     case "TYPING_CHANGED": {
@@ -253,6 +243,7 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
         text: data.text,
         timestamp: data.timestamp,
         isSelf: data.username === username,
+        imageUrl: data.imageUrl,
         replyTo: data.replyTo,
       };
 
@@ -261,13 +252,6 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
         message: incomingMessage,
         senderUsername: data.username,
       });
-
-      if (data.username !== username && channelRef.current?.subscribed) {
-        channelRef.current.trigger("client-read", {
-          timestamp: data.timestamp,
-          username: data.username,
-        });
-      }
     });
 
     channel.bind("client-typing", (data: TypingEvent) => {
@@ -275,14 +259,6 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
         type: "TYPING_CHANGED",
         username: data.username,
         isTyping: data.isTyping,
-      });
-    });
-
-    channel.bind("client-read", (data: { timestamp: number; username: string }) => {
-      dispatch({
-        type: "MESSAGE_READ",
-        timestamp: data.timestamp,
-        username: data.username,
       });
     });
 
@@ -310,7 +286,7 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
   );
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, imageUrl?: string) => {
       if (!roomId || !username) return;
 
       const msgTimestamp = Date.now();
@@ -324,8 +300,8 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
         text,
         timestamp: msgTimestamp,
         isSelf: true,
+        imageUrl,
         replyTo: replyData,
-        status: "sent",
       };
 
       dispatch({ type: "MESSAGE_SENT", message: selfMessage });
@@ -339,6 +315,7 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
             username,
             text,
             timestamp: msgTimestamp,
+            imageUrl,
             replyTo: replyData,
           }),
         });
