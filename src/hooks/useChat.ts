@@ -1,6 +1,7 @@
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import Pusher, { Channel } from "pusher-js";
 import { Message } from "@/types/chat";
+import { sendChatMessage } from "@/services/chatService";
 
 export interface PusherMember {
   id: string;
@@ -404,45 +405,16 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
       dispatch({ type: "MESSAGE_SENT", message: selfMessage });
 
       try {
-        if (imageUrl) {
-          // Chunk base64 string into 6000 character segments (~6KB per event)
-          const CHUNK_SIZE = 6000;
-          const totalChunks = Math.ceil(imageUrl.length / CHUNK_SIZE);
-          const mediaId = msgId;
-
-          for (let i = 0; i < totalChunks; i++) {
-            const chunkData = imageUrl.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-            await fetch("/api/message", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                roomId,
-                username,
-                text: i === 0 ? text : "",
-                timestamp: msgTimestamp,
-                mediaId,
-                chunkIndex: i,
-                totalChunks,
-                chunkData,
-                isViewOnce,
-                replyTo: i === 0 ? replyData : undefined,
-              }),
-            });
-          }
-        } else {
-          // Standard text message
-          await fetch("/api/message", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              roomId,
-              username,
-              text,
-              timestamp: msgTimestamp,
-              replyTo: replyData,
-            }),
-          });
-        }
+        await sendChatMessage({
+          roomId,
+          username,
+          text,
+          msgId,
+          msgTimestamp,
+          imageUrl,
+          isViewOnce,
+          replyTo: replyData,
+        });
       } catch (error) {
         console.error("Failed to send message", error);
       }
