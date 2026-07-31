@@ -5,6 +5,9 @@ export interface Message {
   timestamp: number;
   isSelf: boolean;
   imageUrl?: string;
+  isViewOnce?: boolean;
+  isOpened?: boolean;
+  mediaId?: string;
   replyTo?: {
     username: string;
     text: string;

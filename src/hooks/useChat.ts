@@ -18,6 +18,11 @@ export interface ChatMessageEvent {
   text: string;
   timestamp: number;
   imageUrl?: string;
+  isViewOnce?: boolean;
+  mediaId?: string;
+  chunkIndex?: number;
+  totalChunks?: number;
+  chunkData?: string;
   replyTo?: {
     username: string;
     text: string;
@@ -48,6 +53,7 @@ type ChatAction =
   | { type: "MESSAGE_SENT"; message: Message }
   | { type: "TYPING_CHANGED"; username: string; isTyping: boolean }
   | { type: "SET_REPLY_TO"; message: Message | null }
+  | { type: "MARK_VIEW_ONCE_OPENED"; messageId: string }
   | { type: "LEAVE_ROOM" };
 
 const initialState: ChatState = {
@@ -109,7 +115,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case "MESSAGE_RECEIVED": {
       const exists = state.messages.some(
-        (m) => m.timestamp === action.message.timestamp && m.username === action.message.username
+        (m) =>
+          m.id === action.message.id ||
+          (m.timestamp === action.message.timestamp && m.username === action.message.username && m.text === action.message.text)
       );
       const nextTyping = new Set(state.typingUsers);
       nextTyping.delete(action.senderUsername);
@@ -130,6 +138,16 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         messages: [...state.messages, action.message],
         replyTo: null,
+      };
+
+    case "MARK_VIEW_ONCE_OPENED":
+      return {
+        ...state,
+        messages: state.messages.map((m) =>
+          m.id === action.messageId
+            ? { ...m, isOpened: true, imageUrl: undefined }
+            : m
+        ),
       };
 
     case "TYPING_CHANGED": {
@@ -163,6 +181,23 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
   const { onJoinSuccess } = options || {};
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const channelRef = useRef<Channel | null>(null);
+
+  // In-memory chunks store for streaming reassembly
+  const mediaStoreRef = useRef<
+    Map<
+      string,
+      {
+        chunks: string[];
+        receivedCount: number;
+        totalChunks: number;
+        username: string;
+        text: string;
+        timestamp: number;
+        isViewOnce?: boolean;
+        replyTo?: any;
+      }
+    >
+  >(new Map());
 
   useEffect(() => {
     if (!roomId || !username) {
@@ -237,13 +272,72 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
     });
 
     channel.bind("new-message", (data: ChatMessageEvent) => {
+      // Ignore self-echo messages if needed
+      if (data.username === username) {
+        return;
+      }
+
+      // Handle chunked media streaming
+      if (data.mediaId && data.totalChunks && data.chunkIndex !== undefined && data.chunkData) {
+        let entry = mediaStoreRef.current.get(data.mediaId);
+        if (!entry) {
+          entry = {
+            chunks: new Array(data.totalChunks),
+            receivedCount: 0,
+            totalChunks: data.totalChunks,
+            username: data.username,
+            text: data.text,
+            timestamp: data.timestamp,
+            isViewOnce: data.isViewOnce,
+            replyTo: data.replyTo,
+          };
+          mediaStoreRef.current.set(data.mediaId, entry);
+        }
+
+        if (!entry.chunks[data.chunkIndex]) {
+          entry.chunks[data.chunkIndex] = data.chunkData;
+          entry.receivedCount++;
+        }
+
+        // Keep text/reply context from chunk 0 if present
+        if (data.chunkIndex === 0 && data.text) {
+          entry.text = data.text;
+        }
+
+        // When all chunks arrive, reassemble in memory
+        if (entry.receivedCount === entry.totalChunks) {
+          const assembledImageUrl = entry.chunks.join("");
+          const incomingMessage: Message = {
+            id: data.mediaId,
+            username: entry.username,
+            text: entry.text,
+            timestamp: entry.timestamp,
+            isSelf: false,
+            imageUrl: assembledImageUrl,
+            isViewOnce: entry.isViewOnce,
+            replyTo: entry.replyTo,
+          };
+
+          mediaStoreRef.current.delete(data.mediaId);
+
+          dispatch({
+            type: "MESSAGE_RECEIVED",
+            message: incomingMessage,
+            senderUsername: data.username,
+          });
+        }
+        return;
+      }
+
+      // Direct message (non-chunked text / image)
       const incomingMessage: Message = {
         id: crypto.randomUUID(),
         username: data.username,
         text: data.text,
         timestamp: data.timestamp,
-        isSelf: data.username === username,
+        isSelf: false,
         imageUrl: data.imageUrl,
+        isViewOnce: data.isViewOnce,
         replyTo: data.replyTo,
       };
 
@@ -286,7 +380,7 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
   );
 
   const sendMessage = useCallback(
-    async (text: string, imageUrl?: string) => {
+    async (text: string, imageUrl?: string, isViewOnce?: boolean) => {
       if (!roomId || !username) return;
 
       const msgTimestamp = Date.now();
@@ -294,36 +388,61 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
         ? { username: state.replyTo.username, text: state.replyTo.text }
         : undefined;
 
-      const resolvedImageUrl =
-        imageUrl && imageUrl.startsWith("/") && typeof window !== "undefined"
-          ? `${window.location.origin}${imageUrl}`
-          : imageUrl;
+      const msgId = crypto.randomUUID();
 
       const selfMessage: Message = {
-        id: crypto.randomUUID(),
+        id: msgId,
         username,
         text,
         timestamp: msgTimestamp,
         isSelf: true,
-        imageUrl: resolvedImageUrl,
+        imageUrl,
+        isViewOnce,
         replyTo: replyData,
       };
 
       dispatch({ type: "MESSAGE_SENT", message: selfMessage });
 
       try {
-        await fetch("/api/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roomId,
-            username,
-            text,
-            timestamp: msgTimestamp,
-            imageUrl: resolvedImageUrl,
-            replyTo: replyData,
-          }),
-        });
+        if (imageUrl) {
+          // Chunk base64 string into 6000 character segments (~6KB per event)
+          const CHUNK_SIZE = 6000;
+          const totalChunks = Math.ceil(imageUrl.length / CHUNK_SIZE);
+          const mediaId = msgId;
+
+          for (let i = 0; i < totalChunks; i++) {
+            const chunkData = imageUrl.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+            await fetch("/api/message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                roomId,
+                username,
+                text: i === 0 ? text : "",
+                timestamp: msgTimestamp,
+                mediaId,
+                chunkIndex: i,
+                totalChunks,
+                chunkData,
+                isViewOnce,
+                replyTo: i === 0 ? replyData : undefined,
+              }),
+            });
+          }
+        } else {
+          // Standard text message
+          await fetch("/api/message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              roomId,
+              username,
+              text,
+              timestamp: msgTimestamp,
+              replyTo: replyData,
+            }),
+          });
+        }
       } catch (error) {
         console.error("Failed to send message", error);
       }
@@ -333,6 +452,10 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
 
   const setReplyTo = useCallback((message: Message | null) => {
     dispatch({ type: "SET_REPLY_TO", message });
+  }, []);
+
+  const markViewOnceOpened = useCallback((messageId: string) => {
+    dispatch({ type: "MARK_VIEW_ONCE_OPENED", messageId });
   }, []);
 
   return {
@@ -346,5 +469,6 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
     leaveRoom,
     handleTyping,
     setReplyTo,
+    markViewOnceOpened,
   };
 }

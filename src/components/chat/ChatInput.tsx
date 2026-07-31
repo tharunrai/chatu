@@ -1,17 +1,17 @@
 import React, { useState, useRef } from "react";
-import { Send, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Send, X, Image as ImageIcon, Loader2, CircleAlert } from "lucide-react";
 import Image from "next/image";
 import { Message } from "@/types/chat";
 
 interface ChatInputProps {
-  onSendMessage: (text: string, imageUrl?: string) => void;
+  onSendMessage: (text: string, imageUrl?: string, isViewOnce?: boolean) => void;
   onTyping: (isTyping: boolean) => void;
   replyTo?: Message | null;
   onCancelReply?: () => void;
 }
 
-// Client-side image compression helper to ensure fast upload & small payload
-function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<string> {
+// Client-side image WebP compression helper
+function compressImage(file: File, maxWidth = 900, maxHeight = 900, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -38,7 +38,8 @@ function compressImage(file: File, maxWidth = 1200, maxHeight = 1200, quality = 
           return resolve(e.target?.result as string);
         }
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        // Output WebP format for high compression ratio (~20KB)
+        resolve(canvas.toDataURL("image/webp", quality));
       };
       img.onerror = () => reject(new Error("Failed to load image"));
       img.src = e.target?.result as string;
@@ -56,44 +57,32 @@ export default function ChatInput({
 }: ChatInputProps) {
   const [inputText, setInputText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
+  const [isViewOnce, setIsViewOnce] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [inputError, setInputError] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      setUploadError("Please select a valid image file.");
+      setInputError("Please select a valid image file.");
       return;
     }
 
-    setUploadError("");
-    setIsUploading(true);
+    setInputError("");
+    setIsProcessing(true);
 
     try {
-      // Compress image on canvas to ensure light upload size & avoid Pusher payload errors
-      const compressedBase64 = await compressImage(file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: compressedBase64 }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setSelectedImage(data.url);
-      } else {
-        setUploadError(data.error || "Failed to upload image. Please try again.");
-        setSelectedImage(null);
-      }
+      // Compress image directly on canvas to lightweight WebP data URL
+      const compressedWebP = await compressImage(file);
+      setSelectedImage(compressedWebP);
     } catch (err) {
-      console.error("Upload error:", err);
-      setUploadError("Failed to process image. Please try again.");
+      console.error("Compression error:", err);
+      setInputError("Failed to process photo.");
       setSelectedImage(null);
     } finally {
-      setIsUploading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -140,10 +129,11 @@ export default function ChatInput({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((inputText.trim() || selectedImage) && !isUploading) {
-      onSendMessage(inputText.trim(), selectedImage ?? undefined);
+    if ((inputText.trim() || selectedImage) && !isProcessing) {
+      onSendMessage(inputText.trim(), selectedImage ?? undefined, isViewOnce);
       setInputText("");
       setSelectedImage(null);
+      setIsViewOnce(false);
 
       // Notify typing stopped
       onTyping(false);
@@ -153,15 +143,15 @@ export default function ChatInput({
     }
   };
 
-  const canSubmit = (Boolean(inputText.trim()) || Boolean(selectedImage)) && !isUploading;
+  const canSubmit = (Boolean(inputText.trim()) || Boolean(selectedImage)) && !isProcessing;
 
   return (
     <div className="p-4 bg-gray-900/80 border-t border-gray-800 relative">
-      {/* Upload Error Banner */}
-      {uploadError && (
+      {/* Input Error Banner */}
+      {inputError && (
         <div className="mb-2 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg p-2 flex items-center justify-between">
-          <span>{uploadError}</span>
-          <button onClick={() => setUploadError("")} className="hover:text-rose-200">
+          <span>{inputError}</span>
+          <button onClick={() => setInputError("")} className="hover:text-rose-200">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -186,11 +176,11 @@ export default function ChatInput({
         </div>
       )}
 
-      {/* Image Preview Bar */}
-      {(selectedImage || isUploading) && (
-        <div className="mb-3 flex items-center gap-3 bg-gray-950/90 border border-indigo-500/30 rounded-2xl p-2.5 max-w-xs relative animate-in fade-in-50 duration-200">
+      {/* Image Preview Bar with WhatsApp View Once (1) Toggle */}
+      {(selectedImage || isProcessing) && (
+        <div className="mb-3 flex items-center gap-3 bg-gray-950/90 border border-indigo-500/30 rounded-2xl p-2.5 max-w-sm relative animate-in fade-in-50 duration-200">
           <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-800 border border-gray-700 shrink-0 flex items-center justify-center">
-            {isUploading ? (
+            {isProcessing ? (
               <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
             ) : selectedImage ? (
               <Image
@@ -205,22 +195,42 @@ export default function ChatInput({
 
           <div className="flex-1 min-w-0">
             <span className="text-xs font-medium text-gray-200 block truncate">
-              {isUploading ? "Compressing & uploading..." : "Attached photo"}
+              {isProcessing ? "Processing photo..." : "Attached photo"}
             </span>
             <span className="text-[10px] text-gray-500 block">
-              {isUploading ? "Please wait" : "Ready to send"}
+              {isProcessing ? "Optimizing image" : isViewOnce ? "Strict View Once enabled" : "Standard media photo"}
             </span>
           </div>
 
-          {!isUploading && selectedImage && (
-            <button
-              type="button"
-              onClick={() => setSelectedImage(null)}
-              className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-full transition-colors shrink-0 mr-1"
-              title="Remove photo"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          {!isProcessing && selectedImage && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* WhatsApp View Once (1) Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsViewOnce(!isViewOnce)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                  isViewOnce
+                    ? "bg-emerald-600/30 text-emerald-400 border-emerald-500/60 shadow-lg shadow-emerald-500/20"
+                    : "bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200"
+                }`}
+                title={isViewOnce ? "View Once active" : "Enable View Once"}
+              >
+                <CircleAlert className="w-3.5 h-3.5" />
+                <span>1</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedImage(null);
+                  setIsViewOnce(false);
+                }}
+                className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-full transition-colors shrink-0"
+                title="Remove photo"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -239,7 +249,7 @@ export default function ChatInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
+          disabled={isProcessing}
           className="p-3 text-gray-400 hover:text-indigo-400 hover:bg-gray-800/80 active:scale-95 disabled:opacity-50 transition-all rounded-xl border border-gray-800 bg-gray-950 shrink-0"
           title="Attach photo"
         >

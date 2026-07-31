@@ -17,18 +17,35 @@ export default async function handler(
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { roomId, username, text, timestamp, replyTo, imageUrl } = req.body;
+  const {
+    roomId,
+    username,
+    text,
+    timestamp,
+    replyTo,
+    imageUrl,
+    isViewOnce,
+    mediaId,
+    chunkIndex,
+    totalChunks,
+    chunkData,
+  } = req.body;
 
   try {
-    // Trigger the 'new-message' event on the presence channel specific to the roomId
+    // Trigger 'new-message' event on the presence channel
     await pusher.trigger(`presence-room-${roomId}`, 'new-message', {
       username,
       text,
       timestamp,
       replyTo,
       imageUrl,
+      isViewOnce,
+      mediaId,
+      chunkIndex,
+      totalChunks,
+      chunkData,
     });
-    
+
     res.status(200).json({ success: true });
   } catch (error) {
     console.error('Pusher error:', error);

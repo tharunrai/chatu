@@ -1,25 +1,38 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CornerUpLeft, X, ZoomIn } from "lucide-react";
+import { CornerUpLeft, X, ZoomIn, Eye } from "lucide-react";
 import { Message } from "@/types/chat";
 
 interface ChatAreaProps {
   messages: Message[];
   typingUsersCount: number;
   onReplyToMessage?: (message: Message) => void;
+  onMarkViewOnceOpened?: (messageId: string) => void;
 }
 
 export default function ChatArea({
   messages,
   typingUsersCount,
   onReplyToMessage,
+  onMarkViewOnceOpened,
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
+  const [activeLightboxMessage, setActiveLightboxMessage] = useState<{
+    id: string;
+    url: string | null;
+    isViewOnce?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingUsersCount]);
+
+  const handleCloseLightbox = () => {
+    if (activeLightboxMessage?.isViewOnce && activeLightboxMessage.id && onMarkViewOnceOpened) {
+      onMarkViewOnceOpened(activeLightboxMessage.id);
+    }
+    setActiveLightboxMessage(null);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 relative">
@@ -58,7 +71,7 @@ export default function ChatArea({
             >
               <div className="flex items-center gap-2 mb-1 px-1">
                 <span className="text-xs text-gray-500">{msg.username}</span>
-                {/* Dedicated Mobile & Desktop Reply Button */}
+                {/* Dedicated Reply Button */}
                 {onReplyToMessage && (
                   <button
                     type="button"
@@ -96,25 +109,64 @@ export default function ChatArea({
                   </div>
                 )}
 
-                {/* Attached Image */}
-                {msg.imageUrl && (
-                  <div className="mb-2 relative rounded-xl overflow-hidden group/img cursor-pointer bg-gray-950/40 border border-black/10">
-                    <div
-                      className="relative max-h-72 w-full flex justify-center items-center overflow-hidden rounded-xl"
-                      onClick={() => setActiveLightboxImage(msg.imageUrl ?? null)}
-                    >
-                      <img
-                        src={msg.imageUrl}
-                        alt="Shared media"
-                        className="max-h-72 w-auto max-w-full object-contain rounded-xl transition-transform duration-300 group-hover/img:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
-                          <ZoomIn className="w-3.5 h-3.5" /> Enlarge
+                {/* WhatsApp-Style View Once Message Pill */}
+                {msg.isViewOnce ? (
+                  <div className="mb-2">
+                    {msg.isOpened || !msg.imageUrl ? (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-950/60 border border-gray-800 rounded-xl text-gray-400 text-xs select-none">
+                        <span className="w-5 h-5 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center font-bold text-[10px] text-gray-400">
+                          1
                         </span>
+                        <span className="font-medium text-gray-400">Opened</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveLightboxMessage({
+                            id: msg.id,
+                            url: msg.imageUrl ?? null,
+                            isViewOnce: true,
+                          })
+                        }
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900/60 rounded-xl text-emerald-300 text-xs font-semibold transition-all group/vo active:scale-95 shadow-lg shadow-emerald-950/40"
+                      >
+                        <span className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/60 flex items-center justify-center font-bold text-[10px] text-emerald-300">
+                          1
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-emerald-400" /> Photo
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  /* Standard Image Display */
+                  msg.imageUrl && (
+                    <div className="mb-2 relative rounded-xl overflow-hidden group/img cursor-pointer bg-gray-950/40 border border-black/10">
+                      <div
+                        className="relative max-h-72 w-full flex justify-center items-center overflow-hidden rounded-xl"
+                        onClick={() =>
+                          setActiveLightboxMessage({
+                            id: msg.id,
+                            url: msg.imageUrl ?? null,
+                            isViewOnce: false,
+                          })
+                        }
+                      >
+                        <img
+                          src={msg.imageUrl}
+                          alt="Shared media"
+                          className="max-h-72 w-auto max-w-full object-contain rounded-xl transition-transform duration-300 group-hover/img:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                            <ZoomIn className="w-3.5 h-3.5" /> Enlarge
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )
                 )}
 
                 {/* Message Text Caption */}
@@ -149,25 +201,26 @@ export default function ChatArea({
       <div ref={messagesEndRef} />
 
       {/* Fullscreen Lightbox Modal */}
-      {activeLightboxImage && (
+      {activeLightboxMessage && activeLightboxMessage.url && (
         <div
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setActiveLightboxImage(null)}
+          onClick={handleCloseLightbox}
         >
           <button
             type="button"
-            onClick={() => setActiveLightboxImage(null)}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white p-2.5 bg-gray-900/80 hover:bg-gray-800 rounded-full transition-colors z-50"
+            onClick={handleCloseLightbox}
+            className="absolute top-4 right-4 text-gray-400 hover:text-white p-2.5 bg-gray-900/80 hover:bg-gray-800 rounded-full transition-colors z-50 flex items-center gap-1 text-xs"
             title="Close image"
           >
             <X className="w-6 h-6" />
           </button>
+
           <div
             className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={activeLightboxImage}
+              src={activeLightboxMessage.url}
               alt="Fullscreen shared view"
               className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
             />

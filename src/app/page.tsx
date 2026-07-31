@@ -37,6 +37,7 @@ export default function ChatApp() {
     leaveRoom: leaveChatRoom,
     handleTyping,
     setReplyTo,
+    markViewOnceOpened,
   } = useChat(session?.roomId ?? "", session?.username ?? "", {
     onJoinSuccess: handleJoinSuccess,
   });
@@ -132,6 +133,7 @@ export default function ChatApp() {
           messages={messages}
           typingUsersCount={typingUsers.size}
           onReplyToMessage={setReplyTo}
+          onMarkViewOnceOpened={markViewOnceOpened}
         />
 
         <ChatInput
