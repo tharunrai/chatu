@@ -294,13 +294,18 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
         ? { username: state.replyTo.username, text: state.replyTo.text }
         : undefined;
 
+      const resolvedImageUrl =
+        imageUrl && imageUrl.startsWith("/") && typeof window !== "undefined"
+          ? `${window.location.origin}${imageUrl}`
+          : imageUrl;
+
       const selfMessage: Message = {
         id: crypto.randomUUID(),
         username,
         text,
         timestamp: msgTimestamp,
         isSelf: true,
-        imageUrl,
+        imageUrl: resolvedImageUrl,
         replyTo: replyData,
       };
 
@@ -315,7 +320,7 @@ export function useChat(roomId: string, username: string, options?: UseChatOptio
             username,
             text,
             timestamp: msgTimestamp,
-            imageUrl,
+            imageUrl: resolvedImageUrl,
             replyTo: replyData,
           }),
         });

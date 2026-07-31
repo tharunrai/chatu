@@ -25,15 +25,19 @@ export default async function handler(
       return res.status(400).json({ error: 'No image data provided' });
     }
 
-    // Match base64 header
-    const matches = image.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-    
-    if (!matches || matches.length !== 3) {
-      return res.status(400).json({ error: 'Invalid base64 image data' });
+    // Robust base64 image parsing
+    const parts = image.split(';base64,');
+    if (parts.length !== 2) {
+      return res.status(400).json({ error: 'Invalid base64 image format' });
     }
 
-    const extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-    const base64Data = matches[2];
+    const mimeMatch = parts[0].match(/data:(image\/[a-zA-Z0-9\+\-\.]+)/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+    let extension = mimeType.split('/')[1] || 'png';
+    if (extension === 'jpeg') extension = 'jpg';
+    if (extension.includes('+')) extension = extension.split('+')[0];
+
+    const base64Data = parts[1];
     const buffer = Buffer.from(base64Data, 'base64');
 
     // Create uploads folder inside public if not present
